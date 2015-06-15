@@ -82,8 +82,8 @@ byte masterCard[4];		// Stores master card's ID
  */
 
 #define RST_PIN           7          // Configurable, see typical pin layout above
-#define RST_PIN2           8          // Configurable, see typical pin layout above
-#define SS_PIN           9          // Configurable, see typical pin layout above
+#define RST_PIN2           9          // Configurable, see typical pin layout above
+#define SS_PIN           8          // Configurable, see typical pin layout above
 #define SS_PIN2          10          // Configurable, see typical pin layout above
 
 
@@ -98,6 +98,9 @@ void setup() {
   pinMode(relay1, OUTPUT);        // Be careful how relay circuit behave on while resetting or power-cycling your Arduino
   pinMode(relay2, OUTPUT);        // Be careful how relay circuit behave on while resetting or power-cycling your Arduino
   digitalWrite(relay1, HIGH);		// Make sure door is locked
+  digitalWrite(relay2, HIGH);		// Make sure door is locked
+  
+  pinMode(A0, INPUT);
 
   //Initialize
   Serial.begin(9600);	 // Initialize serial communications with PC
@@ -113,6 +116,8 @@ void setup() {
   
   Serial.println(F("Everything Ready"));
   Serial.println(F("Waiting PICCs to be scanned"));
+  
+  //pinMode(A0, INPUT);
 }
 
 
@@ -125,16 +130,45 @@ void loop () {
   }
   while (!successRead && !successRead_2); 	// the program will not go further while you not get a successful read
   
-      if (findID()) {	// If not, check if we can find it
-        Serial.println(F("Welcome, You shall pass"));
-        granted(1000);        	// Open the door lock for 10s
+      if (successRead) {	// If not, check if we can find it
+        Serial.println(F("Welcome 1., You shall pass"));
+        digitalWrite(relay1, LOW);
+        int iTime=0;
+        do{
+          float x = float(analogRead(A0)) * 5.0 / 1024.0;
+          Serial.println (x);
+           if (x > 1)
+          {
+            digitalWrite(relay1, HIGH);
+            digitalWrite(relay2, HIGH);
+            iTime = 100;
+          }
+          delay (100);
+          iTime += 1;
+        }
+        while (iTime < 100);
       }
       else {			// If not, show that the ID was not valid
-        Serial.println(F("You shall not pass"));
-        denied();
+        Serial.println(F("Welcome 2., You shall pass"));
+        digitalWrite(relay2, LOW);
+        int iTime=0;
+        do{
+          float x = float(analogRead(A0)) * 5.0 / 1024.0;
+          Serial.println (x);
+           if (x > 1)
+          {
+            digitalWrite(relay1, HIGH);
+            digitalWrite(relay2, HIGH);
+            iTime = 100;
+          }
+          delay (100);
+          iTime += 1;
+        }
+        while (iTime < 100);
       }
  
- 
+     digitalWrite(relay1, HIGH);
+     digitalWrite(relay2, HIGH);
 }
 
 boolean findID () {  // Check If we can find UID's specific file
@@ -148,9 +182,9 @@ boolean findID () {  // Check If we can find UID's specific file
 
 /////////////////////////////////////////  Access Granted    ///////////////////////////////////
 void granted (int setDelay) {
-  digitalWrite(relay1, LOW); 		// Unlock door!
+  digitalWrite(relay1, HIGH); 		// Unlock door!
   delay(setDelay); 			// Hold door lock open for given seconds
-  digitalWrite(relay1, HIGH); 		// Relock door
+  digitalWrite(relay1, LOW); 		// Relock door
 }
 
 ///////////////////////////////////////// Access Denied  ///////////////////////////////////
@@ -160,6 +194,9 @@ void denied() {
 
 ///////////////////////////////////////// Get PICC's UID ///////////////////////////////////
 int getID() {
+  int iResult = 0;
+  String sID;
+  
   // Getting ready for Reading PICCs
   if ( ! mfrc522.PICC_IsNewCardPresent()) { //If a new PICC placed to RFID reader continue
     return 0;
@@ -174,13 +211,25 @@ int getID() {
   for (int i = 0; i < 4; i++) {  //
     readCard[i] = mfrc522.uid.uidByte[i];
     Serial.print(readCard[i], HEX);
+    sID += readCard[i];
   }
   Serial.println("");
   mfrc522.PICC_HaltA(); // Stop reading
-  return 1;
+  Serial.println(sID);
+
+  if (sID == "127717353") {
+    iResult = 1;
+  } else {
+    iResult = 0;
+  }
+
+  return iResult;
 }
 ///////////////////////////////////////// Get PICC's UID ///////////////////////////////////
 int getID_2() {
+  int iResult = 0;
+  String sID;
+  
   // Getting ready for Reading PICCs
   if ( ! mfrc522_2.PICC_IsNewCardPresent()) { //If a new PICC placed to RFID reader continue
     return 0;
@@ -195,10 +244,20 @@ int getID_2() {
   for (int i = 0; i < 4; i++) {  //
     readCard[i] = mfrc522_2.uid.uidByte[i];
     Serial.print(readCard[i], HEX);
+    sID += readCard[i];
   }
   Serial.println("");
   mfrc522_2.PICC_HaltA(); // Stop reading
-  return 1;
+
+  if (sID == "1377517253") {
+    iResult = 1;
+  } else {
+    iResult = 0;
+  }
+  return iResult;
+  
+// 127717353
+// 1377517253
 }
 
 void ShowReaderDetails() {
